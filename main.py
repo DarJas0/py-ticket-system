@@ -50,6 +50,20 @@ async def create_ticket(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.info(f"New ticket #{ticket_id} created by user {user_id}")
     await update.message.reply_text(f"✅ Ticket #{ticket_id} has been created!\n\nDescription: {problem_description}")
 
+async def show_tickets(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handles the /tickets command."""
+    if not ticket_db:
+        await update.message.reply_text(
+            "No tickets open currently!"
+        )
+        return
+
+    response: str = "These are the tickets:\n\n"
+    for ticket_id, data in ticket_db.items():
+        response += f"{ticket_id}: {data['problem_description']}\n"
+
+    await update.message.reply_text(response)
+
 def generate_response(user_input: str) -> str:
     """Processes user text and generates a response."""
     normalized_input: str = user_input.lower()
@@ -90,6 +104,7 @@ if __name__ == '__main__':
     # Register handlers
     app.add_handler(CommandHandler('start', initiate_command))
     app.add_handler(CommandHandler('ticket', create_ticket))
+    app.add_handler(CommandHandler('tickets', show_tickets))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, process_message))
     app.add_error_handler(log_error)
 
