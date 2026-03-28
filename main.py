@@ -1,7 +1,7 @@
 import os
 import logging
 import sys
-from typing import Final
+from typing import Final, Dict, Any
 from dotenv import load_dotenv
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
@@ -18,11 +18,37 @@ logger = logging.getLogger(__name__)
 
 API_TOKEN: Final = os.getenv('TELEGRAM_TOKEN')
 
+# --- IN-MEMORY DATABASE ---
+ticket_db: Dict[int, Dict[str, Any]] = {}
+ticket_counter: int = 1
 
 async def initiate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handles the /start command."""
     await update.message.reply_text('Greetings! I am your pingpong bot. Say "ping" if you want a "pong".')
 
+async def create_ticket(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handles the /ticket command."""
+    global ticket_counter
+
+    if not context.args:
+        await update.message.reply_text(
+            "Please describe your issue! \nExample: /ticket My printer is burning"
+        )
+        return
+
+    problem_description: str = " ".join(context.args)
+    user_id: int = update.message.from_user.id
+
+    ticket_id: int = ticket_counter
+    ticket_db[ticket_id] = {
+        "user_id" : user_id,
+        "problem_description" : problem_description,
+        "status" : "open"
+    }
+    ticket_counter += 1
+
+    logger.info(f"New ticket #{ticket_id} created by user {user_id}")
+    await update.message.reply_text(f"✅ Ticket #{ticket_id} has been created!\n\nDescription: {problem_description}")
 
 def generate_response(user_input: str) -> str:
     """Processes user text and generates a response."""
@@ -63,6 +89,7 @@ if __name__ == '__main__':
 
     # Register handlers
     app.add_handler(CommandHandler('start', initiate_command))
+    app.add_handler(CommandHandler('ticket', create_ticket))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, process_message))
     app.add_error_handler(log_error)
 
