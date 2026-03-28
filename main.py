@@ -60,7 +60,27 @@ async def show_tickets(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     response: str = "These are the tickets:\n\n"
     for ticket_id, data in ticket_db.items():
-        response += f"{ticket_id}: {data['problem_description']}\n"
+        if data["status"] == "open":
+            response += f"#{ticket_id}: {data['problem_description']}\n"
+
+    await update.message.reply_text(response)
+
+async def close_tickets(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handles the /close command."""
+    if not context.args or not context.args[0].isdigit():
+        await update.message.reply_text(
+            "Please use the ID of the ticket after the /close \nExample: /close 1"
+        )
+        return
+
+    ticket_id: int = int(context.args[0])
+    response: str = "You have closed the ticket!\n"
+
+    if ticket_id in ticket_db:
+        ticket_db[ticket_id]["status"] = "closed"
+        response += f"#{ticket_id}: {ticket_db[ticket_id]['problem_description']}\n"
+    else:
+        response = f"There is no ticket #{ticket_id}"
 
     await update.message.reply_text(response)
 
@@ -105,6 +125,7 @@ if __name__ == '__main__':
     app.add_handler(CommandHandler('start', initiate_command))
     app.add_handler(CommandHandler('ticket', create_ticket))
     app.add_handler(CommandHandler('tickets', show_tickets))
+    app.add_handler(CommandHandler('close', close_tickets))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, process_message))
     app.add_error_handler(log_error)
 
